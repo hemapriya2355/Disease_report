@@ -1,0 +1,27 @@
+<!-- VIEW PATIENTS -->
+      <div class="page" id="page-view-patients">
+        <div class="table-card">
+          <div class="table-card-header">
+            <h3>All Patients</h3>
+            <div class="search-bar">
+              <span>🔍</span>
+              <input type="text" id="patient-search" placeholder="Search by name or ID..." oninput="searchPatients()">
+            </div>
+          </div>
+          <div style="overflow-x:auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>Name</th><th>Age</th><th>Gender</th>
+                  <th>Blood</th><th>Phone</th><th>Registered</th><th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="patients-tbody">
+                <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3);">
+                  <div class="spinner"></div>
+                </td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>

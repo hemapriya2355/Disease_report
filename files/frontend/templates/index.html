@@ -1,0 +1,1380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MedGraph — Healthcare Knowledge Graph</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+:root {
+  --bg: #f8fafc;
+  --bg2: #ffffff;
+  --bg3: #f1f5f9;
+  --border: #e2e8f0;
+  --accent: #0ea5e9;
+  --accent2: #8b5cf6;
+  --accent3: #10b981;
+  --accent4: #f59e0b;
+  --danger: #ef4444;
+  --text: #0f172a;
+  --text2: #334155;
+  --text3: #64748b;
+  --sidebar-w: 260px;
+
+  --patient-color: #0ea5e9;
+  --symptom-color: #f59e0b;
+  --disease-color: #ef4444;
+  --doctor-color: #10b981;
+  --hospital-color: #8b5cf6;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { height:100%; font-family:'Inter', sans-serif; background:var(--bg); color:var(--text); overflow:hidden; }
+
+/* ── SCROLLBAR ──────────────────────────────── */
+::-webkit-scrollbar { width:6px; height:6px; }
+::-webkit-scrollbar-track { background:var(--bg2); }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+/* ── LOGIN PAGE ─────────────────────────────── */
+#login-page {
+  display:flex; align-items:center; justify-content:center;
+  height:100vh; position:relative; overflow:hidden;
+}
+#login-page::before {
+  content:''; position:absolute; inset:0;
+  background: radial-gradient(ellipse at 30% 50%, rgba(0,212,255,0.08) 0%, transparent 60%),
+              radial-gradient(ellipse at 70% 50%, rgba(124,58,237,0.08) 0%, transparent 60%);
+}
+.login-grid {
+  position:absolute; inset:0;
+  background-image: 
+    linear-gradient(rgba(226,232,240,0.6) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(226,232,240,0.6) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.login-box {
+  position:relative; z-index:2;
+  background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.95) 100%);
+  border:1px solid var(--border);
+  border-radius:2px;
+  padding:48px 40px;
+  width:420px;
+  box-shadow: 0 0 60px rgba(0,212,255,0.08), 0 0 120px rgba(124,58,237,0.05);
+}
+.login-logo {
+  display:flex; align-items:center; gap:12px; margin-bottom:8px;
+}
+.login-logo-icon {
+  width:40px; height:40px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius:2px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px;
+}
+.login-logo h1 { font-size:22px; font-weight:800; letter-spacing:-0.5px; }
+.login-logo h1 span { color:var(--accent); }
+.login-tagline { font-family:'Space Mono',monospace; font-size:11px; color:var(--text3); margin-bottom:36px; letter-spacing:1px; }
+.login-box h2 { font-size:16px; font-weight:700; margin-bottom:24px; color:var(--text2); }
+
+.form-group { margin-bottom:18px; }
+.form-group label { display:block; font-size:11px; font-weight:700; letter-spacing:1.5px; color:var(--text3); margin-bottom:8px; text-transform:uppercase; }
+.form-group input, .form-group select {
+  width:100%; padding:12px 16px;
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text); font-family:'Inter', sans-serif; font-size:14px;
+  border-radius:2px; outline:none; transition:border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,212,255,0.08); }
+.form-group select option { background:var(--bg3); }
+
+.btn-primary {
+  width:100%; padding:13px;
+  background: linear-gradient(135deg, var(--accent), rgba(0,212,255,0.7));
+  border:none; border-radius:2px;
+  color:var(--bg); font-family:'Inter', sans-serif; font-size:14px; font-weight:700;
+  cursor:pointer; letter-spacing:0.5px;
+  transition:opacity 0.2s, transform 0.1s;
+}
+.btn-primary:hover { opacity:0.9; }
+.btn-primary:active { transform:scale(0.98); }
+
+.login-creds {
+  margin-top:24px; padding:16px;
+  background:rgba(0,212,255,0.04); border:1px solid rgba(0,212,255,0.1);
+  border-radius:2px;
+}
+.login-creds p { font-family:'Space Mono',monospace; font-size:11px; color:var(--text3); line-height:1.8; }
+.login-creds strong { color:var(--accent); }
+.login-error { color:var(--danger); font-size:13px; margin-top:12px; text-align:center; display:none; }
+
+/* ── APP SHELL ──────────────────────────────── */
+#app { display:none; height:100vh; }
+#app.active { display:flex; }
+
+/* ── SIDEBAR ────────────────────────────────── */
+.sidebar {
+  width:var(--sidebar-w); background:var(--bg2);
+  border-right:1px solid var(--border);
+  display:flex; flex-direction:column;
+  flex-shrink:0; overflow:hidden;
+}
+.sidebar-header {
+  padding:24px 20px 20px;
+  border-bottom:1px solid var(--border);
+}
+.sidebar-logo { display:flex; align-items:center; gap:10px; }
+.sidebar-logo-icon {
+  width:32px; height:32px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius:2px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; flex-shrink:0;
+}
+.sidebar-logo h1 { font-size:17px; font-weight:800; }
+.sidebar-logo h1 span { color:var(--accent); }
+
+.user-pill {
+  margin-top:14px; padding:10px 12px;
+  background:var(--bg3); border:1px solid var(--border); border-radius:2px;
+}
+.user-pill-name { font-size:13px; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.user-pill-role {
+  display:inline-block; margin-top:4px;
+  font-family:'Space Mono',monospace; font-size:10px;
+  padding:2px 8px; border-radius:1px;
+  text-transform:uppercase; letter-spacing:0.5px;
+}
+.role-admin { background:rgba(239,68,68,0.15); color:#ef4444; }
+.role-doctor { background:rgba(16,185,129,0.15); color:#10b981; }
+.role-user { background:rgba(0,212,255,0.15); color:#00d4ff; }
+
+.sidebar-nav { flex:1; overflow-y:auto; padding:12px 0; }
+.nav-section { padding:0 20px; margin-bottom:6px; margin-top:12px; }
+.nav-section-label { font-family:'Space Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:1.5px; text-transform:uppercase; }
+.nav-item {
+  display:flex; align-items:center; gap:12px;
+  padding:10px 20px; cursor:pointer;
+  border-left:2px solid transparent;
+  transition:all 0.15s; color:var(--text2);
+  font-size:13px; font-weight:600;
+}
+.nav-item:hover { color:var(--text); background:rgba(0,0,0,0.03); }
+.nav-item.active { color:var(--accent); border-left-color:var(--accent); background:rgba(0,212,255,0.05); }
+.nav-icon { font-size:16px; width:20px; text-align:center; flex-shrink:0; }
+
+.sidebar-footer { padding:16px 20px; border-top:1px solid var(--border); }
+.btn-logout {
+  width:100%; padding:10px;
+  background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2);
+  color:var(--danger); font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+  border-radius:2px; cursor:pointer; transition:all 0.2s;
+}
+.btn-logout:hover { background:rgba(239,68,68,0.2); }
+
+/* ── MAIN CONTENT ───────────────────────────── */
+.main-content { flex:1; overflow:hidden; display:flex; flex-direction:column; }
+.main-header {
+  padding:18px 32px;
+  border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  background:var(--bg2); flex-shrink:0;
+}
+.main-header h2 { font-size:18px; font-weight:800; }
+.main-header p { font-size:12px; color:var(--text3); margin-top:2px; }
+.header-actions { display:flex; gap:10px; align-items:center; }
+
+.page-body { flex:1; overflow-y:auto; padding:28px 32px; }
+
+/* ── PAGES ──────────────────────────────────── */
+.page { display:none; }
+.page.active { display:block; }
+
+/* ── DASHBOARD ──────────────────────────────── */
+.stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:28px; }
+.stat-card {
+  padding:20px 24px;
+  background:var(--bg2); border:1px solid var(--border); border-radius:2px;
+  position:relative; overflow:hidden;
+}
+.stat-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:2px;
+}
+.stat-card.blue::before { background:var(--accent); }
+.stat-card.purple::before { background:var(--accent2); }
+.stat-card.green::before { background:var(--accent3); }
+.stat-card.yellow::before { background:var(--accent4); }
+.stat-value { font-size:32px; font-weight:800; margin-bottom:4px; }
+.stat-label { font-size:12px; color:var(--text3); font-weight:600; letter-spacing:0.5px; }
+.stat-icon { position:absolute; top:20px; right:20px; font-size:28px; opacity:0.15; }
+
+.dash-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.dash-card {
+  background:var(--bg2); border:1px solid var(--border); border-radius:2px; overflow:hidden;
+}
+.dash-card-header {
+  padding:16px 20px; border-bottom:1px solid var(--border);
+  font-size:13px; font-weight:700; color:var(--text2);
+  display:flex; align-items:center; gap:8px;
+}
+.dash-card-body { padding:16px 20px; }
+.dash-list-item {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 0; border-bottom:1px solid rgba(203,213,225,0.8); font-size:13px;
+}
+.dash-list-item:last-child { border-bottom:none; }
+.badge {
+  font-family:'Space Mono',monospace; font-size:10px;
+  padding:3px 8px; border-radius:1px;
+}
+.badge-blue { background:rgba(0,212,255,0.12); color:var(--accent); }
+.badge-red { background:rgba(239,68,68,0.12); color:var(--danger); }
+.badge-green { background:rgba(16,185,129,0.12); color:var(--accent3); }
+.badge-yellow { background:rgba(245,158,11,0.12); color:var(--accent4); }
+
+.quick-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:28px; }
+.quick-action {
+  padding:20px; background:var(--bg2); border:1px solid var(--border); border-radius:2px;
+  cursor:pointer; transition:all 0.2s; text-align:center;
+}
+.quick-action:hover { border-color:var(--accent); background:rgba(0,212,255,0.04); transform:translateY(-2px); }
+.quick-action-icon { font-size:28px; margin-bottom:10px; }
+.quick-action-label { font-size:13px; font-weight:700; margin-bottom:4px; }
+.quick-action-sub { font-size:11px; color:var(--text3); }
+
+/* ── FORMS ──────────────────────────────────── */
+.form-card {
+  background:var(--bg2); border:1px solid var(--border); border-radius:2px;
+  overflow:hidden; max-width:700px;
+}
+.form-card-header {
+  padding:20px 28px; border-bottom:1px solid var(--border);
+  font-size:15px; font-weight:700;
+}
+.form-card-body { padding:28px; }
+.form-row { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+.form-row.three { grid-template-columns:1fr 1fr 1fr; }
+.form-field { margin-bottom:18px; }
+.form-field label {
+  display:block; font-size:11px; font-weight:700; letter-spacing:1px;
+  color:var(--text3); margin-bottom:8px; text-transform:uppercase;
+}
+.form-field input, .form-field select, .form-field textarea {
+  width:100%; padding:10px 14px;
+  background:var(--bg3); border:1px solid var(--border);
+  color:var(--text); font-family:'Inter', sans-serif; font-size:13px;
+  border-radius:2px; outline:none; transition:border-color 0.2s;
+}
+.form-field input:focus, .form-field select:focus, .form-field textarea:focus {
+  border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,212,255,0.05);
+}
+.form-field textarea { resize:vertical; min-height:80px; }
+.btn-submit {
+  padding:11px 28px;
+  background: linear-gradient(135deg, var(--accent), rgba(0,212,255,0.7));
+  border:none; border-radius:2px;
+  color:var(--bg); font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+  cursor:pointer; transition:opacity 0.2s;
+}
+.btn-submit:hover { opacity:0.85; }
+.btn-secondary {
+  padding:11px 20px;
+  background:transparent; border:1px solid var(--border);
+  color:var(--text2); font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+  border-radius:2px; cursor:pointer; transition:all 0.2s;
+}
+.btn-secondary:hover { border-color:var(--text2); color:var(--text); }
+.form-actions { display:flex; gap:12px; margin-top:8px; }
+
+/* ── TABLES ─────────────────────────────────── */
+.table-card { background:var(--bg2); border:1px solid var(--border); border-radius:2px; overflow:hidden; }
+.table-card-header {
+  padding:16px 20px; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.table-card-header h3 { font-size:14px; font-weight:700; }
+.search-bar {
+  display:flex; gap:8px; align-items:center;
+  padding:8px 14px; background:var(--bg3); border:1px solid var(--border); border-radius:2px;
+  width:240px;
+}
+.search-bar input {
+  background:none; border:none; color:var(--text); font-family:'Inter', sans-serif;
+  font-size:13px; outline:none; flex:1;
+}
+.search-bar input::placeholder { color:var(--text3); }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+th {
+  text-align:left; padding:12px 16px;
+  background:var(--bg3); font-size:11px; font-weight:700;
+  color:var(--text3); letter-spacing:1px; text-transform:uppercase;
+  border-bottom:1px solid var(--border);
+}
+td { padding:12px 16px; border-bottom:1px solid rgba(203,213,225,0.8); color:var(--text2); }
+tr:last-child td { border-bottom:none; }
+tr:hover td { background:rgba(0,0,0,0.03); color:var(--text); }
+.table-action-btn {
+  padding:5px 12px; font-size:11px; font-weight:700;
+  border-radius:2px; cursor:pointer; border:1px solid; margin-right:6px;
+  transition:all 0.2s; font-family:'Inter', sans-serif;
+}
+.btn-view { border-color:rgba(0,212,255,0.3); color:var(--accent); background:rgba(0,212,255,0.05); }
+.btn-view:hover { background:rgba(0,212,255,0.12); }
+.btn-edit { border-color:rgba(245,158,11,0.3); color:var(--accent4); background:rgba(245,158,11,0.05); }
+.btn-edit:hover { background:rgba(245,158,11,0.12); }
+.btn-diag { border-color:rgba(16,185,129,0.3); color:var(--accent3); background:rgba(16,185,129,0.05); }
+.btn-diag:hover { background:rgba(16,185,129,0.12); }
+
+/* ── SYMPTOMS PAGE ──────────────────────────── */
+.symptom-layout { display:grid; grid-template-columns:1fr 420px; gap:24px; }
+.symptom-tags { display:flex; flex-wrap:wrap; gap:8px; margin-top:12px; }
+.symptom-tag {
+  padding:6px 14px; font-size:12px; font-weight:600;
+  background:var(--bg3); border:1px solid var(--border); border-radius:2px;
+  cursor:pointer; transition:all 0.2s; color:var(--text2); user-select:none;
+}
+.symptom-tag:hover { border-color:var(--accent4); color:var(--accent4); }
+.symptom-tag.selected { background:rgba(245,158,11,0.12); border-color:var(--accent4); color:var(--accent4); }
+.selected-symptoms { display:flex; flex-wrap:wrap; gap:6px; min-height:42px; margin:12px 0; }
+.sel-chip {
+  padding:4px 12px; font-size:12px; font-weight:600;
+  background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.4);
+  border-radius:2px; color:var(--accent4); cursor:pointer; transition:all 0.2s;
+}
+.sel-chip:hover { background:rgba(239,68,68,0.1); border-color:var(--danger); color:var(--danger); }
+
+.result-panel {
+  background:var(--bg2); border:1px solid var(--border); border-radius:2px; overflow:hidden;
+  position:sticky; top:0;
+}
+.result-panel-header { padding:16px 20px; border-bottom:1px solid var(--border); font-size:13px; font-weight:700; }
+.result-panel-body { padding:20px; }
+.result-section { margin-bottom:20px; }
+.result-section-label { font-size:10px; font-weight:700; letter-spacing:1.5px; color:var(--text3); text-transform:uppercase; margin-bottom:10px; }
+.disease-card {
+  padding:16px; border-radius:2px;
+  background:rgba(239,68,68,0.08); border:1px solid rgba(239,68,68,0.2);
+}
+.disease-name { font-size:16px; font-weight:800; color:var(--danger); margin-bottom:6px; }
+.severity-badge {
+  display:inline-block; font-family:'Space Mono',monospace; font-size:10px;
+  padding:3px 10px; border-radius:1px;
+}
+.sev-low { background:rgba(16,185,129,0.15); color:var(--accent3); }
+.sev-moderate { background:rgba(245,158,11,0.15); color:var(--accent4); }
+.sev-high { background:rgba(239,68,68,0.15); color:var(--danger); }
+.sev-critical { background:rgba(239,68,68,0.25); color:#ff6b6b; }
+.sev-unknown { background:rgba(148,163,184,0.15); color:var(--text3); }
+
+.doctor-card {
+  padding:14px; border-radius:2px;
+  background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2);
+}
+.doctor-name { font-size:14px; font-weight:700; color:var(--accent3); }
+.doctor-spec { font-size:12px; color:var(--text3); margin-top:3px; }
+
+.hospital-item {
+  padding:12px; border-radius:2px;
+  background:rgba(124,58,237,0.06); border:1px solid rgba(124,58,237,0.15);
+  margin-bottom:8px;
+}
+.hospital-name { font-size:13px; font-weight:700; color:var(--accent2); }
+.hospital-info { font-size:11px; color:var(--text3); margin-top:4px; }
+.hospital-rating { color:var(--accent4); }
+.empty-result { text-align:center; padding:40px; color:var(--text3); font-size:13px; }
+.empty-icon { font-size:40px; margin-bottom:12px; opacity:0.4; }
+
+/* ── KNOWLEDGE GRAPH ────────────────────────── */
+#kg-container {
+  width:100%; background:var(--bg2); border:1px solid var(--border); border-radius:2px;
+  position:relative; overflow:hidden;
+}
+#kg-svg { width:100%; display:block; }
+.kg-legend {
+  display:flex; gap:20px; flex-wrap:wrap;
+  padding:16px 20px; border-top:1px solid var(--border);
+}
+.legend-item { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--text2); }
+.legend-dot { width:12px; height:12px; border-radius:50%; }
+.kg-controls {
+  position:absolute; top:16px; right:16px;
+  display:flex; flex-direction:column; gap:8px;
+}
+.kg-btn {
+  width:36px; height:36px; background:var(--bg3); border:1px solid var(--border);
+  border-radius:2px; cursor:pointer; color:var(--text2); font-size:16px;
+  display:flex; align-items:center; justify-content:center; transition:all 0.2s;
+}
+.kg-btn:hover { border-color:var(--accent); color:var(--accent); }
+.kg-patient-filter {
+  position:absolute; top:16px; left:16px;
+}
+.kg-patient-filter select {
+  padding:8px 12px; background:rgba(248,250,252,0.85); border:1px solid var(--border);
+  color:var(--text); font-family:'Inter', sans-serif; font-size:12px;
+  border-radius:2px; outline:none; backdrop-filter:blur(8px);
+}
+.node-tooltip {
+  position:fixed; pointer-events:none; z-index:1000;
+  background:rgba(255,255,255,0.95); border:1px solid var(--border);
+  padding:8px 14px; border-radius:2px; font-size:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.4); display:none;
+}
+.node-tooltip .tt-type { font-family:'Space Mono',monospace; font-size:10px; color:var(--text3); }
+.node-tooltip .tt-name { font-weight:700; margin-top:2px; }
+
+/* ── HISTORY PAGE ───────────────────────────── */
+.history-filters { display:flex; gap:12px; margin-bottom:20px; flex-wrap:wrap; }
+.filter-select {
+  padding:8px 14px; background:var(--bg2); border:1px solid var(--border);
+  color:var(--text2); font-family:'Inter', sans-serif; font-size:13px;
+  border-radius:2px; outline:none; transition:border-color 0.2s; cursor:pointer;
+}
+.filter-select:focus { border-color:var(--accent); }
+.history-card {
+  background:var(--bg2); border:1px solid var(--border); border-radius:2px;
+  padding:20px; margin-bottom:12px; transition:border-color 0.2s;
+}
+.history-card:hover { border-color:rgba(0,212,255,0.3); }
+.history-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:14px; }
+.history-patient { font-size:15px; font-weight:700; }
+.history-date { font-family:'Space Mono',monospace; font-size:11px; color:var(--text3); }
+.history-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; }
+.history-field label { font-size:10px; font-weight:700; letter-spacing:1px; color:var(--text3); text-transform:uppercase; display:block; margin-bottom:6px; }
+.history-field value { font-size:13px; color:var(--text2); }
+.symptom-chips { display:flex; flex-wrap:wrap; gap:4px; }
+.s-chip {
+  padding:3px 8px; font-size:11px;
+  background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.25);
+  border-radius:1px; color:var(--accent4);
+}
+
+/* ── MODAL ──────────────────────────────────── */
+.modal-overlay {
+  position:fixed; inset:0; background:rgba(0,0,0,0.7);
+  z-index:500; display:none; align-items:center; justify-content:center;
+  backdrop-filter:blur(4px);
+}
+.modal-overlay.active { display:flex; }
+.modal {
+  background:var(--bg2); border:1px solid var(--border); border-radius:2px;
+  width:90%; max-width:560px; max-height:85vh; overflow-y:auto;
+  box-shadow:0 24px 80px rgba(0,0,0,0.5);
+}
+.modal-header {
+  padding:20px 24px; border-bottom:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.modal-title { font-size:15px; font-weight:700; }
+.modal-close { background:none; border:none; color:var(--text3); font-size:20px; cursor:pointer; }
+.modal-close:hover { color:var(--text); }
+.modal-body { padding:24px; }
+
+/* ── TOAST ──────────────────────────────────── */
+.toast-container { position:fixed; top:24px; right:24px; z-index:2000; display:flex; flex-direction:column; gap:8px; }
+.toast {
+  padding:14px 20px; border-radius:2px; font-size:13px; font-weight:600;
+  min-width:260px; animation:slideIn 0.3s ease;
+  border-left:3px solid;
+}
+.toast-success { background:var(--bg3); border-color:var(--accent3); color:var(--text); }
+.toast-error { background:var(--bg3); border-color:var(--danger); color:var(--text); }
+.toast-info { background:var(--bg3); border-color:var(--accent); color:var(--text); }
+@keyframes slideIn { from { transform:translateX(40px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+
+/* ── LOADING ────────────────────────────────── */
+.spinner { display:inline-block; width:18px; height:18px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.loading-overlay { display:flex; align-items:center; gap:12px; color:var(--text3); font-size:13px; padding:40px; justify-content:center; }
+
+/* ── PATIENT PROFILE ────────────────────────── */
+.profile-grid { display:grid; grid-template-columns:280px 1fr; gap:24px; }
+.profile-card { background:var(--bg2); border:1px solid var(--border); border-radius:2px; padding:24px; }
+.profile-avatar {
+  width:72px; height:72px; border-radius:2px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  display:flex; align-items:center; justify-content:center;
+  font-size:28px; font-weight:800; margin-bottom:16px;
+  color:white; flex-shrink:0;
+}
+.profile-name { font-size:18px; font-weight:800; margin-bottom:4px; }
+.profile-id { font-family:'Space Mono',monospace; font-size:11px; color:var(--text3); }
+.profile-fields { margin-top:16px; }
+.profile-field { padding:10px 0; border-bottom:1px solid rgba(203,213,225,0.8); display:flex; justify-content:space-between; }
+.profile-field:last-child { border-bottom:none; }
+.pf-label { font-size:11px; color:var(--text3); font-weight:600; letter-spacing:0.5px; }
+.pf-value { font-size:13px; color:var(--text2); }
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media (max-width:900px) {
+  .stats-grid { grid-template-columns:1fr 1fr; }
+  .symptom-layout { grid-template-columns:1fr; }
+  .history-grid { grid-template-columns:1fr 1fr; }
+  .form-row { grid-template-columns:1fr; }
+}
+
+/* ── GRAPH NODE STYLES ──────────────────────── */
+.node circle { cursor:pointer; stroke-width:2px; transition:r 0.2s; }
+.node circle:hover { filter:brightness(1.3); }
+.node text { pointer-events:none; font-family:'Space Mono',monospace; fill:var(--text2); font-size:10px; }
+.link { stroke-opacity:0.4; }
+.link-label { font-family:'Space Mono',monospace; font-size:9px; fill:var(--text3); }
+</style>
+</head>
+<body>
+
+{% include 'components/login.html' %}
+
+<!-- ── APP SHELL ──────────────────────────── -->
+<div id="app">
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon">🧬</div>
+        <h1>Med<span>Graph</span></h1>
+      </div>
+      <div class="user-pill">
+        <div class="user-pill-name" id="sidebar-username">Loading...</div>
+        <span class="user-pill-role" id="sidebar-role-badge"></span>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section"><span class="nav-section-label">Overview</span></div>
+      <div class="nav-item active" onclick="showPage('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-section"><span class="nav-section-label">Patients</span></div>
+      <div class="nav-item" onclick="showPage('add-patient')" id="nav-add-patient">
+        <span class="nav-icon">➕</span> Add Patient
+      </div>
+      <div class="nav-item" onclick="showPage('view-patients')">
+        <span class="nav-icon">👥</span> View Patients
+      </div>
+      <div class="nav-section"><span class="nav-section-label">Diagnostics</span></div>
+      <div class="nav-item" onclick="showPage('symptoms')" id="nav-symptoms">
+        <span class="nav-icon">🩺</span> Enter Symptoms
+      </div>
+      <div class="nav-item" onclick="showPage('prediction')">
+        <span class="nav-icon">🔬</span> Disease Prediction
+      </div>
+      <div class="nav-item" onclick="showPage('hospitals')">
+        <span class="nav-icon">🏥</span> Hospital Finder
+      </div>
+      <div class="nav-section"><span class="nav-section-label">Intelligence</span></div>
+      <div class="nav-item" onclick="showPage('knowledge-graph')">
+        <span class="nav-icon">🕸️</span> Knowledge Graph
+      </div>
+      <div class="nav-item" onclick="showPage('history')">
+        <span class="nav-icon">📋</span> Patient History
+      </div>
+    </nav>
+    <div class="sidebar-footer">
+      <button class="btn-logout" onclick="doLogout()">⬡ Sign Out</button>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <div class="main-header">
+      <div>
+        <h2 id="page-title">Dashboard</h2>
+        <p id="page-sub">Healthcare Knowledge Graph System</p>
+      </div>
+      <div class="header-actions" id="header-actions"></div>
+    </div>
+    <div class="page-body">
+
+      {% include 'pages/dashboard.html' %}
+
+      {% include 'pages/add_patient.html' %}
+
+      {% include 'pages/view_patients.html' %}
+
+      {% include 'pages/symptoms.html' %}
+
+      {% include 'pages/prediction.html' %}
+
+      {% include 'pages/hospitals.html' %}
+
+      {% include 'pages/knowledge_graph.html' %}
+
+      {% include 'pages/history.html' %}
+
+    </div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">Patient Details</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Tooltip -->
+<div class="node-tooltip" id="node-tooltip">
+  <div class="tt-type" id="tt-type"></div>
+  <div class="tt-name" id="tt-name"></div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────────────────────────
+let currentUser = null;
+let selectedSymptoms = [];
+let allSymptoms = [];
+let allPatients = [];
+let kgTransform = d3.zoomIdentity;
+let kgZoomBehavior = null;
+let kgSvgSelection = null;
+
+const HOSPITAL_DATA = [
+  {name:'Springfield General Hospital',location:'100 Medical Blvd',specializations:['General Medicine','Emergency','Surgery'],contact:'555-1000',rating:4.5},
+  {name:'Heart Care Medical Center',location:'250 Cardiac Way',specializations:['Cardiology','Cardiovascular Surgery'],contact:'555-2000',rating:4.8},
+  {name:'NeuroHealth Clinic',location:'75 Brain Ave',specializations:['Neurology','Neurosurgery','Psychiatry'],contact:'555-3000',rating:4.6},
+  {name:'Bone & Joint Specialists',location:'320 Ortho Dr',specializations:['Orthopedics','Rheumatology'],contact:'555-4000',rating:4.4},
+  {name:'Lung & Respiratory Institute',location:'180 Breath St',specializations:['Pulmonology','Allergy'],contact:'555-5000',rating:4.7},
+  {name:'GastroDigest Medical',location:'90 Gut Lane',specializations:['Gastroenterology','Hepatology'],contact:'555-6000',rating:4.3},
+  {name:'Endocrine & Diabetes Center',location:'415 Hormone Rd',specializations:['Endocrinology','Diabetes Care'],contact:'555-7000',rating:4.5},
+  {name:'DermaSkin Clinic',location:'55 Glow Ave',specializations:['Dermatology','Cosmetic Surgery'],contact:'555-8000',rating:4.2},
+  {name:'MindWell Psychiatric Hospital',location:'200 Calm Blvd',specializations:['Psychiatry','Psychology'],contact:'555-9000',rating:4.6},
+  {name:'Infectious Disease Center',location:'340 Tropical Blvd',specializations:['Infectious Disease'],contact:'555-1100',rating:4.4},
+  {name:'Urology & Kidney Institute',location:'120 Renal Way',specializations:['Urology','Nephrology'],contact:'555-1200',rating:4.5},
+  {name:'City Emergency & Trauma Center',location:'1 Emergency Plaza',specializations:['Emergency','Trauma Surgery'],contact:'555-0911',rating:4.9},
+];
+
+// ── API HELPERS ────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  const data = await r.json();
+  if (!r.ok && r.status === 401) { showLogin(); return null; }
+  return data;
+}
+
+// ── TOAST ──────────────────────────────────────────────────────────────────
+function toast(msg, type='info') {
+  const t = document.createElement('div');
+  t.className = `toast toast-${type}`;
+  t.textContent = msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(() => t.style.opacity='0', 2800);
+  setTimeout(() => t.remove(), 3200);
+}
+
+// ── AUTH ───────────────────────────────────────────────────────────────────
+async function doLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+  const role = document.getElementById('login-role').value;
+  if (!username || !password) { showLoginError('Please fill all fields'); return; }
+  const data = await api('POST', '/api/login', {username, password, role}).catch(() => null);
+  if (!data) { showLoginError('Server error. Please try again.'); return; }
+  if (data.success) {
+    currentUser = data.user;
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('app').classList.add('active');
+    setupUserUI();
+    initApp();
+  } else {
+    showLoginError(data.message || 'Invalid credentials');
+  }
+}
+function showLoginError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = '⚠ ' + msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display='none', 4000);
+}
+async function doLogout() {
+  await api('POST', '/api/logout');
+  currentUser = null;
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('login-page').style.display = 'flex';
+  document.getElementById('login-password').value = '';
+}
+function showLogin() {
+  document.getElementById('app').classList.remove('active');
+  document.getElementById('login-page').style.display = 'flex';
+}
+document.getElementById('login-password').addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── SETUP ──────────────────────────────────────────────────────────────────
+function setupUserUI() {
+  document.getElementById('sidebar-username').textContent = currentUser.full_name || currentUser.username;
+  const rb = document.getElementById('sidebar-role-badge');
+  rb.textContent = currentUser.role;
+  rb.className = `user-pill-role role-${currentUser.role}`;
+
+  const navAddPatient = document.getElementById('nav-add-patient');
+  const quickAddPatient = document.getElementById('quick-add-patient');
+  const navSymptoms = document.getElementById('nav-symptoms');
+  const quickSymptoms = document.getElementById('quick-symptoms');
+
+  if (currentUser.role === 'user') {
+    if (navAddPatient) navAddPatient.style.display = 'none';
+    if (quickAddPatient) quickAddPatient.style.display = 'none';
+    if (navSymptoms) navSymptoms.style.display = 'none';
+    if (quickSymptoms) quickSymptoms.style.display = 'none';
+  } else {
+    if (navAddPatient) navAddPatient.style.display = '';
+    if (quickAddPatient) quickAddPatient.style.display = '';
+    if (navSymptoms) navSymptoms.style.display = '';
+    if (quickSymptoms) quickSymptoms.style.display = '';
+  }
+}
+
+async function initApp() {
+  await loadSymptoms();
+  await loadPatientDropdowns();
+  showPage('dashboard');
+}
+
+async function loadSymptoms() {
+  const data = await api('GET', '/api/symptoms');
+  if (data) { allSymptoms = data; renderSymptomTags(allSymptoms); }
+}
+
+async function loadPatientDropdowns() {
+  const data = await api('GET', '/api/patients');
+  if (!data) return;
+  allPatients = data;
+  ['symptom-patient', 'kg-patient-filter'].forEach(id => {
+    const sel = document.getElementById(id);
+    const old = id === 'kg-patient-filter' ? '<option value="">All Patients</option>' : '<option value="">— Select patient —</option>';
+    sel.innerHTML = old;
+    data.forEach(p => {
+      const o = document.createElement('option');
+      o.value = p.patient_id;
+      o.textContent = `${p.name} (${p.patient_id})`;
+      sel.appendChild(o);
+    });
+  });
+}
+
+// ── PAGE NAVIGATION ────────────────────────────────────────────────────────
+const PAGE_TITLES = {
+  'dashboard': ['Dashboard', 'Overview & Analytics'],
+  'add-patient': ['Add Patient', 'Register a new patient'],
+  'view-patients': ['View Patients', 'All registered patients'],
+  'symptoms': ['Symptom Entry & Diagnosis', 'Predict diseases from symptoms'],
+  'prediction': ['Disease Prediction Engine', 'AI-powered knowledge base'],
+  'hospitals': ['Hospital Network', 'Find nearby hospitals'],
+  'knowledge-graph': ['Knowledge Graph', 'Interactive relationship visualization'],
+  'history': ['Patient History', 'Historical visits and diagnoses'],
+};
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const page = document.getElementById(`page-${name}`);
+  if (page) page.classList.add('active');
+  const navItems = document.querySelectorAll('.nav-item');
+  navItems.forEach(n => { if (n.getAttribute('onclick') && n.getAttribute('onclick').includes(`'${name}'`)) n.classList.add('active'); });
+  const [title, sub] = PAGE_TITLES[name] || [name, ''];
+  document.getElementById('page-title').textContent = title;
+  document.getElementById('page-sub').textContent = sub;
+  document.getElementById('header-actions').innerHTML = '';
+
+  if (name === 'dashboard') loadDashboard();
+  if (name === 'view-patients') loadPatients();
+  if (name === 'knowledge-graph') { setTimeout(loadKnowledgeGraph, 100); }
+  if (name === 'history') loadHistory();
+  if (name === 'prediction') renderKnowledgeBase();
+  if (name === 'hospitals') renderHospitals();
+  if (name === 'symptoms') { loadPatientDropdowns(); }
+}
+
+// ── DASHBOARD ──────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const stats = await api('GET', '/api/stats');
+  if (!stats) return;
+  document.getElementById('stat-patients').textContent = stats.total_patients;
+  document.getElementById('stat-visits').textContent = stats.total_visits;
+  document.getElementById('stat-diseases').textContent = stats.top_diseases.length;
+  document.getElementById('stat-symptoms-count').textContent = stats.top_symptoms.length;
+
+  const dd = document.getElementById('dash-diseases');
+  dd.innerHTML = stats.top_diseases.length ? stats.top_diseases.map((d,i) => `
+    <div class="dash-list-item">
+      <span>${d.predicted_disease}</span>
+      <span class="badge badge-red">${d.cnt} case${d.cnt>1?'s':''}</span>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;">No data yet</p>';
+
+  const ds = document.getElementById('dash-symptoms');
+  ds.innerHTML = stats.top_symptoms.length ? stats.top_symptoms.map(s => `
+    <div class="dash-list-item">
+      <span>${s.symptom}</span>
+      <span class="badge badge-yellow">${s.count}×</span>
+    </div>`).join('') : '<p style="color:var(--text3);font-size:13px;">No data yet</p>';
+}
+
+// ── PATIENTS ───────────────────────────────────────────────────────────────
+async function loadPatients(search='') {
+  const url = search ? `/api/patients?search=${encodeURIComponent(search)}` : '/api/patients';
+  const data = await api('GET', url);
+  if (!data) return;
+  allPatients = data;
+  const tbody = document.getElementById('patients-tbody');
+  if (!data.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--text3);">No patients found</td></tr>';
+    return;
+  }
+  tbody.innerHTML = data.map(p => `
+    <tr>
+      <td><span class="badge badge-blue" style="font-family:Space Mono,monospace">${p.patient_id}</span></td>
+      <td><strong>${p.name}</strong></td>
+      <td>${p.age || '—'}</td>
+      <td>${p.gender || '—'}</td>
+      <td>${p.blood_group || '—'}</td>
+      <td>${p.phone || '—'}</td>
+      <td style="font-size:11px;color:var(--text3);">${formatDate(p.created_at)}</td>
+      <td>
+        <button class="table-action-btn btn-view" onclick="viewPatient('${p.patient_id}')">View</button>
+        <button class="table-action-btn btn-edit" onclick="editPatient('${p.patient_id}')">Edit</button>
+        <button class="table-action-btn btn-diag" onclick="quickDiagnose('${p.patient_id}')">Diagnose</button>
+      </td>
+    </tr>`).join('');
+}
+
+let searchDebounce;
+function searchPatients() {
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => loadPatients(document.getElementById('patient-search').value), 300);
+}
+
+async function addPatient() {
+  const name = document.getElementById('pat-name').value.trim();
+  if (!name) { toast('Patient name is required', 'error'); return; }
+  const data = await api('POST', '/api/patients', {
+    name, age: +document.getElementById('pat-age').value || null,
+    gender: document.getElementById('pat-gender').value,
+    blood_group: document.getElementById('pat-blood').value,
+    phone: document.getElementById('pat-phone').value,
+    address: document.getElementById('pat-address').value,
+  });
+  if (data && data.success) {
+    toast(`Patient ${data.patient.name} registered (${data.patient.patient_id})`, 'success');
+    clearPatientForm();
+    await loadPatientDropdowns();
+  } else {
+    toast(data?.message || 'Error adding patient', 'error');
+  }
+}
+
+function clearPatientForm() {
+  ['pat-name','pat-age','pat-phone','pat-address'].forEach(id => document.getElementById(id).value='');
+  document.getElementById('pat-gender').value='';
+  document.getElementById('pat-blood').value='';
+}
+
+async function viewPatient(pid) {
+  const p = allPatients.find(x => x.patient_id === pid);
+  if (!p) return;
+  const hist = await api('GET', `/api/history?patient_id=${pid}`);
+  showModal('Patient Profile — ' + p.name, `
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+      <div class="profile-avatar">${p.name[0]}</div>
+      <div>
+        <div class="profile-name">${p.name}</div>
+        <div class="profile-id">${p.patient_id}</div>
+        <div style="margin-top:6px;">
+          <span class="badge badge-${p.gender==='Female'?'blue':'green'}" style="font-size:11px">${p.gender||'—'}</span>
+          ${p.blood_group ? `<span class="badge badge-red" style="font-size:11px;margin-left:6px;">${p.blood_group}</span>` : ''}
+        </div>
+      </div>
+    </div>
+    <div class="profile-fields">
+      <div class="profile-field"><span class="pf-label">Age</span><span class="pf-value">${p.age||'—'} years</span></div>
+      <div class="profile-field"><span class="pf-label">Phone</span><span class="pf-value">${p.phone||'—'}</span></div>
+      <div class="profile-field"><span class="pf-label">Address</span><span class="pf-value">${p.address||'—'}</span></div>
+    </div>
+    ${hist && hist.length ? `
+    <div style="margin-top:20px;">
+      <div style="font-size:11px;font-weight:700;letter-spacing:1px;color:var(--text3);margin-bottom:12px;text-transform:uppercase;">Recent Visits (${hist.length})</div>
+      ${hist.slice(0,3).map(h=>`
+        <div style="padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;margin-bottom:8px;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <strong style="font-size:13px;color:var(--danger)">${h.predicted_disease}</strong>
+            <span style="font-size:11px;color:var(--text3)">${formatDate(h.visit_date)}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3)">${h.symptoms.split(',').map(s=>`<span class="s-chip">${s.trim()}</span>`).join(' ')}</div>
+        </div>`).join('')}
+    </div>` : ''}
+  `);
+}
+
+async function editPatient(pid) {
+  const p = allPatients.find(x => x.patient_id === pid);
+  if (!p) return;
+  showModal('Edit Patient — ' + p.name, `
+    <div class="form-field"><label>Full Name</label><input id="edit-name" value="${p.name||''}"></div>
+    <div class="form-row">
+      <div class="form-field"><label>Age</label><input type="number" id="edit-age" value="${p.age||''}"></div>
+      <div class="form-field"><label>Gender</label>
+        <select id="edit-gender">
+          <option ${p.gender==='Male'?'selected':''}>Male</option>
+          <option ${p.gender==='Female'?'selected':''}>Female</option>
+          <option ${p.gender==='Other'?'selected':''}>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-field"><label>Phone</label><input id="edit-phone" value="${p.phone||''}"></div>
+      <div class="form-field"><label>Blood Group</label>
+        <select id="edit-blood">
+          ${['A+','A-','B+','B-','O+','O-','AB+','AB-'].map(b=>`<option ${p.blood_group===b?'selected':''}>${b}</option>`).join('')}
+        </select>
+      </div>
+    </div>
+    <div class="form-field"><label>Address</label><textarea id="edit-address">${p.address||''}</textarea></div>
+    <div class="form-actions">
+      <button class="btn-submit" onclick="saveEditPatient('${pid}')">Save Changes</button>
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+    </div>
+  `);
+}
+
+async function saveEditPatient(pid) {
+  const data = await api('PUT', `/api/patients/${pid}`, {
+    name: document.getElementById('edit-name').value,
+    age: +document.getElementById('edit-age').value || null,
+    gender: document.getElementById('edit-gender').value,
+    phone: document.getElementById('edit-phone').value,
+    blood_group: document.getElementById('edit-blood').value,
+    address: document.getElementById('edit-address').value,
+  });
+  if (data && data.success) {
+    toast('Patient updated successfully', 'success');
+    closeModal();
+    loadPatients();
+    loadPatientDropdowns();
+  }
+}
+
+function quickDiagnose(pid) {
+  showPage('symptoms');
+  setTimeout(() => {
+    document.getElementById('symptom-patient').value = pid;
+  }, 100);
+}
+
+// ── SYMPTOMS ───────────────────────────────────────────────────────────────
+function renderSymptomTags(symptoms) {
+  // Predefined tags have been removed
+}
+
+function filterSymptoms() {
+  // Predefined tags search removed
+}
+
+function toggleSymptom(s) {
+  const idx = selectedSymptoms.indexOf(s);
+  if (idx === -1) selectedSymptoms.push(s);
+  else selectedSymptoms.splice(idx, 1);
+  renderSelectedSymptoms();
+}
+
+function addManualSymptom() {
+  const inputEl = document.getElementById('symptom-search-input');
+  const vals = inputEl.value.split(',').map(v => v.trim().toLowerCase()).filter(v => v);
+  if (!vals.length) return;
+  vals.forEach(val => {
+    if (!selectedSymptoms.includes(val)) selectedSymptoms.push(val);
+  });
+  inputEl.value = '';
+  renderSelectedSymptoms();
+}
+
+function renderSelectedSymptoms() {
+  const container = document.getElementById('selected-symptoms');
+  if (!selectedSymptoms.length) {
+    container.innerHTML = '<span style="color:var(--text3);font-size:12px;">Type a symptom above and press Enter...</span>';
+    return;
+  }
+  container.innerHTML = selectedSymptoms.map(s =>
+    `<div class="sel-chip" onclick="toggleSymptom('${s}')" title="Click to remove">${s} ✕</div>`
+  ).join('');
+}
+
+function clearSymptoms() {
+  selectedSymptoms = [];
+  renderSelectedSymptoms();
+  renderSymptomTags(allSymptoms);
+  document.getElementById('result-body').innerHTML = `
+    <div class="empty-result">
+      <div class="empty-icon">🔬</div>
+      <p>Select symptoms and run diagnosis to see predictions</p>
+    </div>`;
+}
+
+async function runDiagnosis() {
+  addManualSymptom(); // Capture any text they typed but didn't press enter for
+  if (!selectedSymptoms.length) { toast('Please select at least one symptom', 'error'); return; }
+  const pid = document.getElementById('symptom-patient').value;
+  const notes = document.getElementById('symptom-notes').value;
+  const data = await api('POST', '/api/predict', {symptoms: selectedSymptoms, patient_id: pid, notes});
+  if (!data) return;
+  renderDiagnosisResult(data);
+  if (pid) toast('Diagnosis saved to patient history', 'success');
+}
+
+function renderDiagnosisResult(data) {
+  const {prediction, hospitals, symptoms} = data;
+  const sevClass = {
+    'Low': 'sev-low', 'Moderate': 'sev-moderate',
+    'High': 'sev-high', 'Critical': 'sev-critical', 'Unknown': 'sev-unknown'
+  }[prediction.severity] || 'sev-unknown';
+
+  document.getElementById('result-body').innerHTML = `
+    <div class="result-section">
+      <div class="result-section-label">🦠 Predicted Disease</div>
+      <div class="disease-card">
+        <div class="disease-name">${prediction.disease}</div>
+        <span class="severity-badge ${sevClass}">${prediction.severity} SEVERITY</span>
+      </div>
+    </div>
+    <div class="result-section">
+      <div class="result-section-label">💊 Recommended Treatment</div>
+      <div style="padding:14px; background:rgba(14,165,233,0.08); border:1px solid rgba(14,165,233,0.2); border-radius:2px; font-size:13px; color:var(--text2); line-height:1.5;">
+        ${prediction.treatment || 'Consult a specialist for appropriate treatment.'}
+      </div>
+    </div>
+    <div class="result-section">
+      <div class="result-section-label">👨‍⚕️ Recommended Doctor</div>
+      <div class="doctor-card">
+        <div class="doctor-name">${prediction.doctor}</div>
+        <div class="doctor-spec">Specialty: ${prediction.specialty}</div>
+      </div>
+    </div>
+    <div class="result-section">
+      <div class="result-section-label">🏥 Nearby Hospitals</div>
+      ${hospitals.map(h => `
+        <div class="hospital-item">
+          <div class="hospital-name">${h.name}</div>
+          <div class="hospital-info">📍 ${h.location}</div>
+          <div class="hospital-info">📞 ${h.contact} &nbsp;
+            <span class="hospital-rating">★ ${h.rating}</span>
+          </div>
+        </div>`).join('')}
+    </div>
+    <div class="result-section">
+      <div class="result-section-label">🌡️ Symptoms Analyzed</div>
+      <div class="symptom-chips">
+        ${symptoms.map(s=>`<span class="s-chip">${s}</span>`).join('')}
+      </div>
+    </div>
+  `;
+}
+
+// ── KNOWLEDGE BASE ─────────────────────────────────────────────────────────
+const KB_DATA = [
+  {disease:'Anxiety Disorder',symptoms:['anxiety','restlessness','rapid heartbeat'],doctor:'Psychiatrist',severity:'Moderate'},
+  {disease:'Depression',symptoms:['persistent sadness','loss of interest'],doctor:'Psychiatrist',severity:'High'},
+  {disease:'Schizophrenia',symptoms:['hallucinations','delusions'],doctor:'Psychiatrist',severity:'Critical'},
+  {disease:'Insomnia',symptoms:['sleep disturbance','fatigue','stress'],doctor:'Psychologist',severity:'Low'},
+  {disease:'Bipolar Disorder',symptoms:['extreme mood swings'],doctor:'Psychiatrist',severity:'High'},
+  {disease:'Influenza',symptoms:['fever','body pain','fatigue'],doctor:'General physician',severity:'Moderate'},
+  {disease:'Dengue Fever',symptoms:['high fever','rash','joint pain'],doctor:'Physician',severity:'High'},
+  {disease:'COVID-19',symptoms:['fever','cough','breathing issue'],doctor:'Physician',severity:'High'},
+  {disease:'Asthma',symptoms:['wheezing','breathlessness'],doctor:'Pulmonologist',severity:'Moderate'},
+  {disease:'Tuberculosis',symptoms:['persistent cough','weight loss'],doctor:'Pulmonologist',severity:'High'},
+  {disease:'Heart Attack',symptoms:['chest pain','sweating','nausea'],doctor:'Cardiologist',severity:'Critical'},
+  {disease:'Arrhythmia',symptoms:['irregular heartbeat'],doctor:'Cardiologist',severity:'Moderate'},
+  {disease:'Gastroenteritis',symptoms:['stomach pain','diarrhea'],doctor:'General physician',severity:'Moderate'},
+  {disease:'Acid Reflux',symptoms:['burning chest','acid taste'],doctor:'Gastroenterologist',severity:'Low'},
+  {disease:'Irritable Bowel Syndrome',symptoms:['constipation','bloating'],doctor:'Gastroenterologist',severity:'Moderate'},
+  {disease:'Allergic Reaction',symptoms:['itching','rash'],doctor:'Dermatologist',severity:'Low'},
+  {disease:'Eczema',symptoms:['dry skin','inflamed skin'],doctor:'Dermatologist',severity:'Moderate'},
+  {disease:'Arthritis',symptoms:['joint pain','stiffness'],doctor:'Orthopedic',severity:'Moderate'},
+  {disease:'Myositis',symptoms:['muscle pain','weakness'],doctor:'Physician',severity:'Moderate'},
+  {disease:'Migraine',symptoms:['severe headache','nausea'],doctor:'Neurologist',severity:'Moderate'},
+  {disease:"Alzheimer's Disease",symptoms:['memory loss','confusion'],doctor:'Neurologist',severity:'High'},
+  {disease:'Stroke',symptoms:['sudden paralysis','speech difficulty'],doctor:'Neurologist',severity:'Critical'},
+  {disease:'Respiratory Failure',symptoms:['severe breathing difficulty'],doctor:'Emergency physician',severity:'Critical'},
+  {disease:'Hemorrhage',symptoms:['heavy bleeding'],doctor:'Emergency specialist',severity:'Critical'},
+  {disease:'Anemia',symptoms:['fatigue','weakness'],doctor:'Physician',severity:'Moderate'},
+  {disease:'Diabetes Mellitus',symptoms:['frequent urination','thirst'],doctor:'Endocrinologist',severity:'High'},
+  {disease:'Hypothyroidism',symptoms:['weight gain','tiredness'],doctor:'Endocrinologist',severity:'Moderate'},
+  {disease:'Hyperthyroidism',symptoms:['weight loss','sweating'],doctor:'Endocrinologist',severity:'Moderate'}
+,
+  {disease:'Conjunctivitis',symptoms:['redness','itching','watering'],doctor:'Ophthalmologist',severity:'Low'},
+  {disease:'Refractive Error',symptoms:['blurred vision'],doctor:'Ophthalmologist',severity:'Low'},
+  {disease:'Uveitis',symptoms:['eye pain','sensitivity to light'],doctor:'Ophthalmologist',severity:'Moderate'},
+  {disease:'Dry Eye Syndrome',symptoms:['dryness','burning sensation'],doctor:'Ophthalmologist',severity:'Low'},
+  {disease:'Retinal Detachment',symptoms:['sudden vision loss'],doctor:'Eye specialist (Emergency)',severity:'Critical'},
+  {disease:'Dental Caries',symptoms:['tooth pain','sensitivity'],doctor:'Dentist',severity:'Low'},
+  {disease:'Gingivitis',symptoms:['gum swelling','bleeding'],doctor:'Dentist',severity:'Low'},
+  {disease:'Aphthous Ulcer',symptoms:['mouth ulcers','pain'],doctor:'Dentist',severity:'Low'},
+  {disease:'Oral Thrush',symptoms:['white patches in mouth'],doctor:'Dentist',severity:'Moderate'},
+  {disease:'Halitosis',symptoms:['bad breath'],doctor:'Dentist',severity:'Low'},
+  {disease:'Muscle Strain',symptoms:['muscle pain after activity'],doctor:'Orthopedic',severity:'Low'},
+  {disease:'Fibromyalgia',symptoms:['chronic widespread pain'],doctor:'Rheumatologist',severity:'Moderate'},
+  {disease:'Sciatica',symptoms:['back pain'],doctor:'Orthopedic',severity:'Moderate'}
+];
+
+function renderKnowledgeBase() {
+  const sevColors = {'Low':'var(--accent3)','Moderate':'var(--accent4)','High':'var(--danger)','Critical':'#ff6b6b'};
+  document.getElementById('kb-list').innerHTML = KB_DATA.map(k => `
+    <div style="padding:12px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;margin-bottom:8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <strong style="font-size:13px;">${k.disease}</strong>
+        <span style="font-size:10px;font-family:Space Mono,monospace;color:${sevColors[k.severity]||'var(--text3)'};">${k.severity}</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:4px;">→ ${k.doctor}</div>
+      <div class="symptom-chips">${k.symptoms.map(s=>`<span class="s-chip" style="font-size:10px;padding:2px 6px">${s}</span>`).join('')}</div>
+    </div>`).join('');
+
+  document.getElementById('hospital-list').innerHTML = HOSPITAL_DATA.slice(0,8).map(h => `
+    <div style="padding:10px;background:var(--bg3);border:1px solid var(--border);border-radius:2px;margin-bottom:8px;">
+      <div style="font-size:13px;font-weight:700;color:var(--accent2);margin-bottom:4px;">${h.name}</div>
+      <div style="font-size:11px;color:var(--text3);">📍 ${h.location}</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:2px;">
+        ${h.specializations.map(s=>`<span class="badge badge-blue" style="font-size:10px;margin-right:4px;">${s}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ── HOSPITALS ──────────────────────────────────────────────────────────────
+function renderHospitals(filter='') {
+  const filtered = filter
+    ? HOSPITAL_DATA.filter(h => h.name.toLowerCase().includes(filter) || h.specializations.some(s=>s.toLowerCase().includes(filter)))
+    : HOSPITAL_DATA;
+  document.getElementById('hospitals-grid').innerHTML = filtered.map(h => `
+    <div style="background:var(--bg2);border:1px solid var(--border);border-radius:2px;padding:20px;transition:border-color 0.2s;" onmouseover="this.style.borderColor='var(--accent2)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <span style="font-size:24px;">🏥</span>
+        <span style="color:var(--accent4);font-family:Space Mono,monospace;font-size:12px;">★ ${h.rating}</span>
+      </div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:4px;">${h.name}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:12px;">📍 ${h.location}</div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:10px;">📞 ${h.contact}</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px;">
+        ${h.specializations.map(s=>`<span class="badge badge-blue" style="font-size:10px;">${s}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+function filterHospitals() {
+  renderHospitals(document.getElementById('hosp-search').value.toLowerCase());
+}
+
+// ── HISTORY ────────────────────────────────────────────────────────────────
+async function loadHistory() {
+  const pid = document.getElementById('hist-patient-filter').value;
+  const disease = document.getElementById('hist-disease-filter').value;
+  let url = '/api/history?x=1';
+  if (pid) url += `&patient_id=${pid}`;
+  if (disease) url += `&disease=${encodeURIComponent(disease)}`;
+  const data = await api('GET', url);
+  const container = document.getElementById('history-list');
+  if (!data || !data.length) {
+    container.innerHTML = '<div class="empty-result"><div class="empty-icon">📋</div><p>No history records found</p></div>';
+    return;
+  }
+  const sevColors = {'Low':'var(--accent3)','Moderate':'var(--accent4)','High':'var(--danger)','Critical':'#ff6b6b'};
+  container.innerHTML = data.map(h => `
+    <div class="history-card">
+      <div class="history-header">
+        <div>
+          <div class="history-patient">${h.patient_name || h.patient_id}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px;">ID: ${h.patient_id} &nbsp;•&nbsp; Recorded by: ${h.recorded_by}</div>
+        </div>
+        <div class="history-date">${formatDate(h.visit_date)}</div>
+      </div>
+      <div class="history-grid">
+        <div class="history-field">
+          <label>🌡️ Symptoms</label>
+          <div class="symptom-chips">${h.symptoms.split(',').map(s=>`<span class="s-chip">${s.trim()}</span>`).join('')}</div>
+        </div>
+        <div class="history-field">
+          <label>🦠 Disease</label>
+          <value style="color:var(--danger);font-weight:700;">${h.predicted_disease}</value>
+        </div>
+        <div class="history-field">
+          <label>👨‍⚕️ Doctor</label>
+          <value>${h.doctor_recommended}</value>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px;">🏥 ${h.hospital_suggested}</div>
+        </div>
+      </div>
+      ${h.notes ? `<div style="margin-top:12px;padding:10px;background:var(--bg3);border-radius:2px;font-size:12px;color:var(--text3);">📝 ${h.notes}</div>` : ''}
+    </div>`).join('');
+}
+
+// ── KNOWLEDGE GRAPH ────────────────────────────────────────────────────────
+async function loadKnowledgeGraph() {
+  const pid = document.getElementById('kg-patient-filter').value;
+  const url = pid ? `/api/knowledge-graph?patient_id=${pid}` : '/api/knowledge-graph';
+  const data = await api('GET', url);
+  if (!data) return;
+  renderKnowledgeGraph(data.nodes, data.links);
+}
+
+const NODE_COLORS = {
+  patient: 'var(--patient-color)',
+  symptom: 'var(--symptom-color)',
+  disease: 'var(--disease-color)',
+  doctor: 'var(--doctor-color)',
+  hospital: 'var(--hospital-color)',
+};
+const NODE_COLORS_HEX = {
+  patient: '#00d4ff', symptom: '#f59e0b', disease: '#ef4444',
+  doctor: '#10b981', hospital: '#7c3aed',
+};
+
+function renderKnowledgeGraph(nodes, links) {
+  const container = document.getElementById('kg-container');
+  const w = container.clientWidth;
+  const h = 530;
+
+  d3.select('#kg-svg').selectAll('*').remove();
+  const svg = d3.select('#kg-svg').attr('height', h);
+  kgSvgSelection = svg;
+
+  const g = svg.append('g').attr('class', 'kg-root');
+
+  kgZoomBehavior = d3.zoom().scaleExtent([0.2, 4]).on('zoom', e => {
+    kgTransform = e.transform;
+    g.attr('transform', e.transform);
+  });
+  svg.call(kgZoomBehavior);
+
+  if (!nodes.length) {
+    svg.append('text').attr('x', w/2).attr('y', h/2).attr('text-anchor','middle')
+      .attr('fill','var(--text3)').attr('font-size','14px').text('No data — add patients and run diagnoses first');
+    return;
+  }
+
+  const sim = d3.forceSimulation(nodes)
+    .force('link', d3.forceLink(links).id(d=>d.id).distance(d => {
+      const types = [d.source.group, d.target.group].join('-');
+      if (types.includes('patient')) return 100;
+      if (types.includes('hospital')) return 120;
+      return 80;
+    }).strength(0.5))
+    .force('charge', d3.forceManyBody().strength(-300))
+    .force('center', d3.forceCenter(w/2, h/2))
+    .force('collision', d3.forceCollide().radius(d => d.size + 10));
+
+  // Glow filter
+  const defs = svg.append('defs');
+  Object.entries(NODE_COLORS_HEX).forEach(([type, color]) => {
+    const f = defs.append('filter').attr('id', `glow-${type}`).attr('x','-50%').attr('y','-50%').attr('width','200%').attr('height','200%');
+    f.append('feGaussianBlur').attr('stdDeviation','3').attr('result','coloredBlur');
+    const m = f.append('feMerge');
+    m.append('feMergeNode').attr('in','coloredBlur');
+    m.append('feMergeNode').attr('in','SourceGraphic');
+  });
+
+  // Arrow markers
+  defs.selectAll('marker').data(['end']).join('marker')
+    .attr('id','arrow').attr('viewBox','0 -5 10 10').attr('refX',20).attr('refY',0)
+    .attr('markerWidth',6).attr('markerHeight',6).attr('orient','auto')
+    .append('path').attr('d','M0,-5L10,0L0,5').attr('fill','rgba(148,163,184,0.3)');
+
+  const link = g.selectAll('.link').data(links).join('line')
+    .attr('class','link').attr('stroke','rgba(148,163,184,0.15)').attr('stroke-width',1.5)
+    .attr('marker-end','url(#arrow)');
+
+  const node = g.selectAll('.node').data(nodes).join('g').attr('class','node')
+    .call(d3.drag()
+      .on('start', (e,d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx=d.x; d.fy=d.y; })
+      .on('drag', (e,d) => { d.fx=e.x; d.fy=e.y; })
+      .on('end', (e,d) => { if (!e.active) sim.alphaTarget(0); d.fx=null; d.fy=null; }));
+
+  node.append('circle')
+    .attr('r', d => d.size)
+    .attr('fill', d => NODE_COLORS_HEX[d.group] + '22')
+    .attr('stroke', d => NODE_COLORS_HEX[d.group])
+    .attr('filter', d => `url(#glow-${d.group})`)
+    .on('mouseover', function(e, d) {
+      d3.select(this).transition().duration(150).attr('r', d.size * 1.3);
+      const tt = document.getElementById('node-tooltip');
+      document.getElementById('tt-type').textContent = d.group.toUpperCase();
+      document.getElementById('tt-name').textContent = d.label;
+      tt.style.display = 'block';
+      tt.style.left = (e.clientX + 14) + 'px';
+      tt.style.top = (e.clientY - 8) + 'px';
+    })
+    .on('mousemove', e => {
+      const tt = document.getElementById('node-tooltip');
+      tt.style.left = (e.clientX + 14) + 'px';
+      tt.style.top = (e.clientY - 8) + 'px';
+    })
+    .on('mouseout', function(e, d) {
+      d3.select(this).transition().duration(150).attr('r', d.size);
+      document.getElementById('node-tooltip').style.display = 'none';
+    });
+
+  node.append('text')
+    .attr('dy', d => d.size + 14)
+    .attr('text-anchor','middle')
+    .attr('font-size', d => d.group==='patient' ? '11px' : '9px')
+    .attr('fill', d => NODE_COLORS_HEX[d.group])
+    .text(d => d.label.length > 18 ? d.label.slice(0,16)+'…' : d.label);
+
+  // Node icons
+  const icons = {patient:'👤', symptom:'🌡️', disease:'🦠', doctor:'👨‍⚕️', hospital:'🏥'};
+  node.append('text')
+    .attr('text-anchor','middle').attr('dy','0.35em')
+    .attr('font-size', d => d.size * 0.9 + 'px')
+    .style('pointer-events','none')
+    .text(d => icons[d.group] || '⬡');
+
+  sim.on('tick', () => {
+    link
+      .attr('x1', d=>d.source.x).attr('y1', d=>d.source.y)
+      .attr('x2', d=>d.target.x).attr('y2', d=>d.target.y);
+    node.attr('transform', d=>`translate(${d.x},${d.y})`);
+  });
+}
+
+function kgZoom(factor) {
+  if (!kgSvgSelection || !kgZoomBehavior) return;
+  kgSvgSelection.transition().duration(300).call(kgZoomBehavior.scaleBy, factor);
+}
+function kgReset() {
+  if (!kgSvgSelection || !kgZoomBehavior) return;
+  kgSvgSelection.transition().duration(400).call(kgZoomBehavior.transform, d3.zoomIdentity);
+}
+
+// ── MODAL ──────────────────────────────────────────────────────────────────
+function showModal(title, body) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = body;
+  document.getElementById('modal-overlay').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('active');
+}
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// ── UTILS ──────────────────────────────────────────────────────────────────
+function formatDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-US', {year:'numeric',month:'short',day:'numeric'});
+}
+
+// ── INIT CHECK ─────────────────────────────────────────────────────────────
+(async () => {
+  const me = await api('GET', '/api/me').catch(() => null);
+  if (me && me.authenticated) {
+    currentUser = me.user;
+    document.getElementById('login-page').style.display = 'none';
+    document.getElementById('app').classList.add('active');
+    setupUserUI();
+    initApp();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,58 @@
+<!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="stats-grid">
+          <div class="stat-card blue">
+            <div class="stat-value" id="stat-patients">—</div>
+            <div class="stat-label">Total Patients</div>
+            <div class="stat-icon">👥</div>
+          </div>
+          <div class="stat-card purple">
+            <div class="stat-value" id="stat-visits">—</div>
+            <div class="stat-label">Total Visits</div>
+            <div class="stat-icon">📅</div>
+          </div>
+          <div class="stat-card green">
+            <div class="stat-value" id="stat-diseases">—</div>
+            <div class="stat-label">Diseases Tracked</div>
+            <div class="stat-icon">🔬</div>
+          </div>
+          <div class="stat-card yellow">
+            <div class="stat-value" id="stat-symptoms-count">—</div>
+            <div class="stat-label">Symptoms Mapped</div>
+            <div class="stat-icon">📊</div>
+          </div>
+        </div>
+
+        <div class="quick-actions">
+          <div class="quick-action" onclick="showPage('add-patient')" id="quick-add-patient">
+            <div class="quick-action-icon">➕</div>
+            <div class="quick-action-label">Add Patient</div>
+            <div class="quick-action-sub">Register a new patient</div>
+          </div>
+          <div class="quick-action" onclick="showPage('symptoms')" id="quick-symptoms">
+            <div class="quick-action-icon">🩺</div>
+            <div class="quick-action-label">Enter Symptoms</div>
+            <div class="quick-action-sub">Diagnose & predict</div>
+          </div>
+          <div class="quick-action" onclick="showPage('knowledge-graph')">
+            <div class="quick-action-icon">🕸️</div>
+            <div class="quick-action-label">Knowledge Graph</div>
+            <div class="quick-action-sub">Visualize connections</div>
+          </div>
+        </div>
+
+        <div class="dash-grid">
+          <div class="dash-card">
+            <div class="dash-card-header">🦠 Top Diseases</div>
+            <div class="dash-card-body" id="dash-diseases">
+              <div class="loading-overlay"><div class="spinner"></div> Loading...</div>
+            </div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-card-header">🌡️ Common Symptoms</div>
+            <div class="dash-card-body" id="dash-symptoms">
+              <div class="loading-overlay"><div class="spinner"></div> Loading...</div>
+            </div>
+          </div>
+        </div>
+      </div>

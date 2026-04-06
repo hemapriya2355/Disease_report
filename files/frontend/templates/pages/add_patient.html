@@ -1,0 +1,51 @@
+<!-- ADD PATIENT -->
+      <div class="page" id="page-add-patient">
+        <div class="form-card">
+          <div class="form-card-header">👤 Register New Patient</div>
+          <div class="form-card-body">
+            <div class="form-row">
+              <div class="form-field">
+                <label>Full Name *</label>
+                <input type="text" id="pat-name" placeholder="Patient full name">
+              </div>
+              <div class="form-field">
+                <label>Age</label>
+                <input type="number" id="pat-age" placeholder="Age in years" min="0" max="120">
+              </div>
+            </div>
+            <div class="form-row three">
+              <div class="form-field">
+                <label>Gender</label>
+                <select id="pat-gender">
+                  <option value="">Select</option>
+                  <option>Male</option>
+                  <option>Female</option>
+                  <option>Other</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Blood Group</label>
+                <select id="pat-blood">
+                  <option value="">Select</option>
+                  <option>A+</option><option>A-</option>
+                  <option>B+</option><option>B-</option>
+                  <option>O+</option><option>O-</option>
+                  <option>AB+</option><option>AB-</option>
+                </select>
+              </div>
+              <div class="form-field">
+                <label>Phone</label>
+                <input type="text" id="pat-phone" placeholder="Contact number">
+              </div>
+            </div>
+            <div class="form-field">
+              <label>Address</label>
+              <textarea id="pat-address" placeholder="Full address"></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn-submit" onclick="addPatient()">Register Patient</button>
+              <button class="btn-secondary" onclick="clearPatientForm()">Clear</button>
+            </div>
+          </div>
+        </div>
+      </div>

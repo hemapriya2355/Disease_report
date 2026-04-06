@@ -1,0 +1,17 @@
+<!-- HISTORY -->
+      <div class="page" id="page-history">
+        <div class="history-filters">
+          <div class="search-bar" style="width:220px;">
+            <span>👤</span>
+            <input type="text" id="hist-patient-filter" placeholder="Patient ID..." oninput="loadHistory()">
+          </div>
+          <input type="text" id="hist-disease-filter" class="filter-select" placeholder="Filter by disease..."
+            style="padding:8px 14px;" oninput="loadHistory()">
+          <button class="btn-secondary" onclick="document.getElementById('hist-patient-filter').value='';document.getElementById('hist-disease-filter').value='';loadHistory()">
+            Clear Filters
+          </button>
+        </div>
+        <div id="history-list">
+          <div class="loading-overlay"><div class="spinner"></div> Loading history...</div>
+        </div>
+      </div>

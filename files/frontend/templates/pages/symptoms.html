@@ -1,0 +1,54 @@
+<!-- SYMPTOMS -->
+      <div class="page" id="page-symptoms">
+        <div class="symptom-layout">
+          <div>
+            <div class="form-card" style="margin-bottom:20px;">
+              <div class="form-card-header">🔗 Select Patient</div>
+              <div class="form-card-body" style="padding:20px;">
+                <div class="form-field">
+                  <label>Patient</label>
+                  <select id="symptom-patient">
+                    <option value="">— Select patient —</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label>Additional Notes</label>
+                  <textarea id="symptom-notes" placeholder="Clinical notes..."></textarea>
+                </div>
+              </div>
+            </div>
+            <div class="form-card">
+              <div class="form-card-header">🩺 Select Symptoms</div>
+              <div class="form-card-body" style="padding:20px;">
+                <div class="form-field">
+                  <label>Selected Symptoms</label>
+                  <div class="selected-symptoms" id="selected-symptoms">
+                    <span style="color:var(--text3);font-size:12px;">Type a symptom above and click Add...</span>
+                  </div>
+                </div>
+                <div class="form-field">
+                  <label>Manually Add Symptom</label>
+                  <div style="display:flex;gap:8px;margin-bottom:10px;">
+                    <input type="text" id="symptom-search-input" placeholder="Type a symptom or comma-separated multiple symptoms..." style="width: 100%; padding: 10px 14px;" onkeypress="if(event.key==='Enter') addManualSymptom()">
+                  </div>
+                </div>
+                <div class="form-actions">
+                  <button class="btn-submit" onclick="runDiagnosis()">Run Diagnosis →</button>
+                  <button class="btn-secondary" onclick="clearSymptoms()">Clear All</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="result-panel" id="result-panel">
+              <div class="result-panel-header">📋 Diagnosis Results</div>
+              <div class="result-panel-body" id="result-body">
+                <div class="empty-result">
+                  <div class="empty-icon">🔬</div>
+                  <p>Select symptoms and run diagnosis to see predictions</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>

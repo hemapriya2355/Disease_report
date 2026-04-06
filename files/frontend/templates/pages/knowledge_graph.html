@@ -1,0 +1,23 @@
+<!-- KNOWLEDGE GRAPH -->
+      <div class="page" id="page-knowledge-graph">
+        <div id="kg-container" style="height:560px;">
+          <svg id="kg-svg"></svg>
+          <div class="kg-patient-filter">
+            <select id="kg-patient-filter" onchange="loadKnowledgeGraph()" style="min-width:160px;">
+              <option value="">All Patients</option>
+            </select>
+          </div>
+          <div class="kg-controls">
+            <button class="kg-btn" onclick="kgZoom(1.3)" title="Zoom In">+</button>
+            <button class="kg-btn" onclick="kgZoom(0.77)" title="Zoom Out">−</button>
+            <button class="kg-btn" onclick="kgReset()" title="Reset">⌂</button>
+          </div>
+        </div>
+        <div class="kg-legend">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--patient-color)"></div>Patient</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--symptom-color)"></div>Symptom</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--disease-color)"></div>Disease</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--doctor-color)"></div>Doctor Specialty</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--hospital-color)"></div>Hospital</div>
+        </div>
+      </div>
